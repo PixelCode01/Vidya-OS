@@ -1,0 +1,57 @@
+{
+  "student": "Arjun Sharma",
+  "branch": "Computer Science Engineering",
+  "semester": 4,
+  "subjects": [
+    {
+      "id": "cs301",
+      "name": "Data Structures & Algorithms",
+      "total_hours": 40,
+      "completed_hours": 26,
+      "topics": [
+        { "name": "Arrays & Strings", "status": "completed" },
+        { "name": "Linked Lists", "status": "completed" },
+        { "name": "Stacks & Queues", "status": "completed" },
+        { "name": "Trees & BST", "status": "in_progress" },
+        { "name": "Graphs", "status": "not_started" },
+        { "name": "Dynamic Programming", "status": "not_started" }
+      ]
+    },
+    {
+      "id": "cs302",
+      "name": "Operating Systems",
+      "total_hours": 35,
+      "completed_hours": 14,
+      "topics": [
+        { "name": "Process Management", "status": "completed" },
+        { "name": "Memory Management", "status": "in_progress" },
+        { "name": "File Systems", "status": "not_started" },
+        { "name": "Deadlocks", "status": "not_started" }
+      ]
+    },
+    {
+      "id": "cs303",
+      "name": "Database Management Systems",
+      "total_hours": 30,
+      "completed_hours": 27,
+      "topics": [
+        { "name": "ER Diagrams & Normalization", "status": "completed" },
+        { "name": "SQL & Joins", "status": "completed" },
+        { "name": "Transactions & ACID", "status": "completed" },
+        { "name": "Indexing & Query Optimization", "status": "in_progress" }
+      ]
+    },
+    {
+      "id": "cs304",
+      "name": "Computer Networks",
+      "total_hours": 35,
+      "completed_hours": 7,
+      "topics": [
+        { "name": "OSI Model & TCP/IP", "status": "completed" },
+        { "name": "Routing Algorithms", "status": "not_started" },
+        { "name": "Transport Layer", "status": "not_started" },
+        { "name": "Application Layer Protocols", "status": "not_started" }
+      ]
+    }
+  ]
+}
