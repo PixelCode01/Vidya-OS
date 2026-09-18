@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vidya-OS</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <!-- Header -->
+  <header class="header">
+    <div class="logo">
+      <div class="logo-icon">📚</div>
+      <span class="logo-text">Vidya-OS</span>
+    </div>
+    <span class="header-badge">Bharat Builds</span>
+  </header>
+
+  <!-- Progress Tracker Section -->
+  <section class="section">
+    <div class="section-header">
+      <span class="section-title">Syllabus Progress</span>
+      <button class="icon-btn" id="refresh-btn" title="Refresh progress">↻</button>
+    </div>
+    <div id="progress-container">
+      <div class="loading-state">
+        <div class="spinner"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Ask AI Section -->
+  <section class="ask-section">
+    <div class="section-header">
+      <span class="section-title">Ask at This Moment</span>
+    </div>
+    <div class="input-group">
+      <textarea
+        id="question-input"
+        class="question-input"
+        placeholder="What is a binary search tree?"
+        rows="1"
+      ></textarea>
+      <button class="send-btn" id="send-btn" title="Ask Vidya-OS">➤</button>
+    </div>
+    <div class="answer-box" id="answer-box">
+      <p style="color: var(--text-muted); font-size: 12px; text-align: center; padding-top: 12px;">
+        Ask a question about what you are watching right now
+      </p>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <span class="footer-text">Powered by AWS Strands + Ollama</span>
+    <span class="footer-aws">
+      <span class="aws-dot"></span>
+      Local AI · No data leaves your device
+    </span>
+  </footer>
+
+  <script src="popup.js"></script>
+</body>
+</html>
