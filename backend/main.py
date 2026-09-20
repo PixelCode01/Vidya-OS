@@ -2,8 +2,10 @@ import base64
 import json
 import os
 from pathlib import Path
+from typing import List, Optional
+from uuid import uuid4
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from mangum import Mangum
 from pydantic import BaseModel
@@ -13,9 +15,6 @@ from google.genai import types
 
 app = FastAPI(title="Vidya-OS Backend")
 
-# Allow the Chrome extension to call this API.
-# During sam local start-api the function runs behind a local gateway
-# on port 3000, so CORS must be wide open for the demo to work.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -24,8 +23,37 @@ app.add_middleware(
 )
 
 SYLLABUS_PATH = Path(__file__).parent / "mock_syllabus.json"
-
 GEMINI_MODEL = "gemini-3.6-flash"
+
+# Load syllabus into memory at startup so updates are instant
+# and we don't hammer the disk on every request.
+with open(SYLLABUS_PATH) as f:
+    _syllabus: dict = json.load(f)
+
+
+def save_syllabus():
+    with open(SYLLABUS_PATH, "w") as f:
+        json.dump(_syllabus, f, indent=2)
+
+
+def build_summary(subject: dict) -> dict:
+    total = subject["total_hours"]
+    done = subject["completed_hours"]
+    pct = round((done / total) * 100) if total else 0
+
+    in_progress = [t["name"] for t in subject["topics"] if t["status"] == "in_progress"]
+    current_topic = in_progress[0] if in_progress else "All done!"
+
+    return {
+        "id": subject["id"],
+        "name": subject["name"],
+        "percent": pct,
+        "completed_hours": done,
+        "total_hours": total,
+        "remaining_hours": total - done,
+        "current_topic": current_topic,
+        "topics": subject["topics"],
+    }
 
 
 def get_gemini_client():
@@ -41,50 +69,113 @@ class AskRequest(BaseModel):
     video_title: str
     timestamp: str
     user_question: str
-    image: str  # base64 encoded JPEG from captureVisibleTab
+    image: str
+
+class TopicUpdate(BaseModel):
+    subject_id: str
+    topic_name: str
+    status: str  # "completed" | "in_progress" | "not_started"
+
+class NewTopic(BaseModel):
+    name: str
+
+class NewSubject(BaseModel):
+    name: str
+    total_hours: int
+    topics: List[str]  # list of topic names to seed the subject with
 
 
-# ---- Endpoints ----
+# ---- Progress endpoints ----
 
 @app.get("/progress")
 async def get_progress():
-    with open(SYLLABUS_PATH) as f:
-        data = json.load(f)
-
-    subjects_summary = []
-    for subject in data["subjects"]:
-        total = subject["total_hours"]
-        done = subject["completed_hours"]
-        pct = round((done / total) * 100)
-        remaining = total - done
-
-        in_progress = [t["name"] for t in subject["topics"] if t["status"] == "in_progress"]
-        current_topic = in_progress[0] if in_progress else "All done!"
-
-        subjects_summary.append({
-            "id": subject["id"],
-            "name": subject["name"],
-            "percent": pct,
-            "completed_hours": done,
-            "total_hours": total,
-            "remaining_hours": remaining,
-            "current_topic": current_topic,
-            "topics": subject["topics"],
-        })
-
     return {
-        "student": data["student"],
-        "branch": data["branch"],
-        "semester": data["semester"],
-        "subjects": subjects_summary,
+        "student": _syllabus["student"],
+        "branch": _syllabus["branch"],
+        "semester": _syllabus["semester"],
+        "subjects": [build_summary(s) for s in _syllabus["subjects"]],
     }
 
+
+@app.patch("/progress/topic")
+async def update_topic(req: TopicUpdate):
+    """Mark a topic as completed / in_progress / not_started."""
+    valid = {"completed", "in_progress", "not_started"}
+    if req.status not in valid:
+        raise HTTPException(400, f"status must be one of {valid}")
+
+    subject = next((s for s in _syllabus["subjects"] if s["id"] == req.subject_id), None)
+    if not subject:
+        raise HTTPException(404, "Subject not found")
+
+    topic = next((t for t in subject["topics"] if t["name"] == req.topic_name), None)
+    if not topic:
+        raise HTTPException(404, "Topic not found")
+
+    old_status = topic["status"]
+    topic["status"] = req.status
+
+    # Recalculate completed_hours by counting completed topics proportionally.
+    # Each topic is assumed to consume equal share of the subject's total hours.
+    topic_count = len(subject["topics"])
+    completed_count = sum(1 for t in subject["topics"] if t["status"] == "completed")
+    subject["completed_hours"] = round((completed_count / topic_count) * subject["total_hours"])
+
+    save_syllabus()
+    return {"ok": True, "old_status": old_status, "new_status": req.status, "subject": build_summary(subject)}
+
+
+@app.post("/progress/topic")
+async def add_topic(subject_id: str, req: NewTopic):
+    """Add a new topic to an existing subject."""
+    subject = next((s for s in _syllabus["subjects"] if s["id"] == subject_id), None)
+    if not subject:
+        raise HTTPException(404, "Subject not found")
+
+    if any(t["name"] == req.name for t in subject["topics"]):
+        raise HTTPException(409, "Topic already exists")
+
+    subject["topics"].append({"name": req.name, "status": "not_started"})
+    save_syllabus()
+    return {"ok": True, "subject": build_summary(subject)}
+
+
+@app.post("/progress/subject")
+async def add_subject(req: NewSubject):
+    """Add a completely new subject to the syllabus."""
+    subject_id = req.name.lower().replace(" ", "_")[:12] + "_" + uuid4().hex[:4]
+
+    new_subject = {
+        "id": subject_id,
+        "name": req.name,
+        "total_hours": req.total_hours,
+        "completed_hours": 0,
+        "topics": [{"name": t, "status": "not_started"} for t in req.topics],
+    }
+
+    _syllabus["subjects"].append(new_subject)
+    save_syllabus()
+    return {"ok": True, "subject": build_summary(new_subject)}
+
+
+@app.delete("/progress/subject/{subject_id}")
+async def delete_subject(subject_id: str):
+    """Remove a subject from the syllabus."""
+    before = len(_syllabus["subjects"])
+    _syllabus["subjects"] = [s for s in _syllabus["subjects"] if s["id"] != subject_id]
+    if len(_syllabus["subjects"]) == before:
+        raise HTTPException(404, "Subject not found")
+    save_syllabus()
+    return {"ok": True}
+
+
+# ---- Ask endpoint ----
 
 @app.post("/ask")
 async def ask_question(req: AskRequest):
     client = get_gemini_client()
     if client is None:
-        return {"answer": "GEMINI_API_KEY not set. Export it in your shell and restart the server."}
+        return {"answer": "GEMINI_API_KEY not set. Export it and restart the server."}
 
     try:
         image_data = req.image
@@ -106,11 +197,7 @@ async def ask_question(req: AskRequest):
             types.Part.from_bytes(data=raw_bytes, mime_type="image/jpeg"),
         ]
 
-        response = client.models.generate_content(
-            model=GEMINI_MODEL,
-            contents=contents,
-        )
-
+        response = client.models.generate_content(model=GEMINI_MODEL, contents=contents)
         answer = response.text.strip() if response.text else "No response from model."
 
     except Exception as exc:
@@ -126,7 +213,4 @@ async def health():
     return {"status": "ok", "model": GEMINI_MODEL, "api_key_set": key_set}
 
 
-# Mangum wraps FastAPI so AWS Lambda / SAM local can invoke it like any
-# other Lambda handler. SAM's local API gateway calls handler(event, context)
-# which Mangum translates into ASGI calls FastAPI understands.
 handler = Mangum(app, lifespan="off")

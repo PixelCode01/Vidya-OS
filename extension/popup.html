@@ -16,43 +16,61 @@
     <span class="header-badge">Bharat Builds</span>
   </header>
 
-  <!-- Progress Tracker -->
-  <section class="section">
-    <div class="section-header">
+  <!-- Tab bar -->
+  <div class="tab-bar">
+    <button class="tab active" id="tab-progress" data-tab="progress">Progress</button>
+    <button class="tab" id="tab-ask" data-tab="ask">Ask AI</button>
+    <button class="tab" id="tab-add" data-tab="add">+ Add</button>
+  </div>
+
+  <!-- Progress Tab -->
+  <div class="tab-content active" id="panel-progress">
+    <div class="panel-header">
       <span class="section-title">Syllabus Progress</span>
       <button class="icon-btn" id="refresh-btn" title="Refresh">↻</button>
     </div>
     <div id="progress-container">
       <div class="loading-state"><div class="spinner"></div></div>
     </div>
-  </section>
+  </div>
 
-  <!-- Ask AI -->
-  <section class="ask-section">
-    <div class="section-header">
+  <!-- Ask AI Tab -->
+  <div class="tab-content" id="panel-ask">
+    <div class="panel-header">
       <span class="section-title">Ask at This Moment</span>
-      <span class="section-hint">Captures your screen + timestamp automatically</span>
+      <span class="section-hint">Captures screen + timestamp</span>
     </div>
     <div class="input-group">
-      <textarea
-        id="question-input"
-        class="question-input"
-        placeholder="What is happening on this slide?"
-        rows="1"
-      ></textarea>
+      <textarea id="question-input" class="question-input"
+        placeholder="What is happening in this diagram?" rows="1"></textarea>
       <button class="send-btn" id="send-btn" title="Ask Gemini">➤</button>
     </div>
     <div class="answer-box" id="answer-box">
       <p class="placeholder-hint">Ask a question — Gemini will look at what you are watching right now</p>
     </div>
-  </section>
+  </div>
+
+  <!-- Add Subject Tab -->
+  <div class="tab-content" id="panel-add">
+    <div class="panel-header">
+      <span class="section-title">Add New Subject</span>
+    </div>
+    <form class="add-form" id="add-subject-form">
+      <input type="text" id="subject-name" class="form-input" placeholder="Subject name (e.g. Machine Learning)" required />
+      <input type="number" id="subject-hours" class="form-input" placeholder="Total hours (e.g. 40)" min="1" required />
+      <textarea id="subject-topics" class="form-input topic-input"
+        placeholder="Topics, one per line:&#10;Introduction to ML&#10;Linear Regression&#10;Neural Networks"></textarea>
+      <button type="submit" class="submit-btn" id="add-subject-btn">Add Subject</button>
+      <div id="add-result" class="add-result"></div>
+    </form>
+  </div>
 
   <!-- Footer -->
   <footer class="footer">
     <span class="footer-text">Powered by Gemini + AWS SAM</span>
     <span class="footer-aws">
       <span class="aws-dot"></span>
-      Multimodal · Local
+      Local · Private
     </span>
   </footer>
 
