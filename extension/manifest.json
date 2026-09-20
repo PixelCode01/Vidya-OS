@@ -1,15 +1,17 @@
 {
   "manifest_version": 3,
   "name": "Vidya-OS",
-  "version": "1.0.0",
-  "description": "Turn YouTube into your personal LMS. Track syllabus progress and ask AI questions at any timestamp.",
+  "version": "2.0.0",
+  "description": "Turn YouTube into your personal LMS. Track syllabus progress and ask Gemini AI questions at any timestamp.",
   "permissions": [
     "activeTab",
     "scripting",
-    "storage"
+    "storage",
+    "tabs"
   ],
   "host_permissions": [
-    "http://localhost:8000/*",
+    "http://127.0.0.1:3000/*",
+    "http://localhost:3000/*",
     "https://www.youtube.com/*"
   ],
   "action": {
@@ -22,6 +24,9 @@
       "js": ["content.js"]
     }
   ],
+  "background": {
+    "service_worker": "background.js"
+  },
   "icons": {
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",
