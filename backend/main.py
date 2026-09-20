@@ -25,7 +25,7 @@ app.add_middleware(
 
 SYLLABUS_PATH = Path(__file__).parent / "mock_syllabus.json"
 
-GEMINI_MODEL = "gemini-2.0-flash"
+GEMINI_MODEL = "gemini-3.6-flash"
 
 
 def get_gemini_client():
