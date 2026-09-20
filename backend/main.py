@@ -25,14 +25,14 @@ app.add_middleware(
 
 SYLLABUS_PATH = Path(__file__).parent / "mock_syllabus.json"
 
-# Gemini client — key is injected via environment variable.
-# Set GEMINI_API_KEY in your shell or in the SAM env section of template.yaml.
-_gemini_client = genai.Client(api_key=os.getenv("GEMINI_API_KEY", ""))
-
-# gemini-2.0-flash is the current stable multimodal flash model.
-# The spec asked for "gemini-3.8-flash" which doesn't exist yet;
-# 2.0-flash is the correct model ID for multimodal + speed.
 GEMINI_MODEL = "gemini-2.0-flash"
+
+
+def get_gemini_client():
+    api_key = os.getenv("GEMINI_API_KEY", "")
+    if not api_key:
+        return None
+    return genai.Client(api_key=api_key)
 
 
 # ---- Schemas ----
@@ -82,9 +82,11 @@ async def get_progress():
 
 @app.post("/ask")
 async def ask_question(req: AskRequest):
+    client = get_gemini_client()
+    if client is None:
+        return {"answer": "GEMINI_API_KEY not set. Export it in your shell and restart the server."}
+
     try:
-        # Strip the data URL prefix that the browser's captureVisibleTab adds.
-        # e.g. "data:image/jpeg;base64,/9j/4AAQ..." -> "/9j/4AAQ..."
         image_data = req.image
         if "," in image_data:
             image_data = image_data.split(",", 1)[1]
@@ -93,21 +95,18 @@ async def ask_question(req: AskRequest):
 
         text_prompt = (
             f"You are Vidya-OS, an expert tutor for Indian engineering students. "
-            f"The student is watching a lecture video titled '{req.video_title}' "
-            f"and paused at timestamp {req.timestamp}. "
-            f"Look at this lecture screenshot and answer their question clearly "
-            f"in 2-3 short sentences, relating it to their B.Tech syllabus where possible.\n\n"
+            f"The student is watching '{req.video_title}' at timestamp {req.timestamp}. "
+            f"Look at this lecture screenshot and answer their question in 2-3 short sentences, "
+            f"relating it to B.Tech syllabus topics where possible.\n\n"
             f"Question: {req.user_question}"
         )
 
-        # Build multimodal content using the google-genai Part API.
-        # types.Part.from_bytes handles the base64 encode/decode internally.
         contents = [
             types.Part.from_text(text=text_prompt),
             types.Part.from_bytes(data=raw_bytes, mime_type="image/jpeg"),
         ]
 
-        response = _gemini_client.models.generate_content(
+        response = client.models.generate_content(
             model=GEMINI_MODEL,
             contents=contents,
         )
@@ -123,7 +122,8 @@ async def ask_question(req: AskRequest):
 
 @app.get("/health")
 async def health():
-    return {"status": "ok", "model": GEMINI_MODEL}
+    key_set = bool(os.getenv("GEMINI_API_KEY"))
+    return {"status": "ok", "model": GEMINI_MODEL, "api_key_set": key_set}
 
 
 # Mangum wraps FastAPI so AWS Lambda / SAM local can invoke it like any
