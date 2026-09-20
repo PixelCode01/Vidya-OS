@@ -1,0 +1,47 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: Vidya-OS local backend wrapped with AWS SAM
+
+Globals:
+  Function:
+    Timeout: 30
+    MemorySize: 512
+    Environment:
+      Variables:
+        # Set your real Gemini key here OR export GEMINI_API_KEY in the shell
+        # before running sam local start-api and SAM will pick it up automatically.
+        GEMINI_API_KEY: !Sub "${GeminiApiKey}"
+
+Parameters:
+  GeminiApiKey:
+    Type: String
+    Default: ""
+    Description: Google Gemini API key (can also be set via env variable)
+
+Resources:
+  VidyaOSFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: VidyaOSBackend
+      # SAM looks for handler = Mangum(app) exported as "handler" in main.py
+      Handler: main.handler
+      Runtime: python3.11
+      CodeUri: ./
+      # SAM local start-api wires all HTTP methods on all paths to this function.
+      # In real AWS you would deploy this as a Lambda + API Gateway combo.
+      Events:
+        ApiRoot:
+          Type: Api
+          Properties:
+            Path: /{proxy+}
+            Method: ANY
+        ApiBase:
+          Type: Api
+          Properties:
+            Path: /
+            Method: ANY
+
+Outputs:
+  VidyaOSApi:
+    Description: Local API Gateway endpoint (sam local start-api runs on port 3000)
+    Value: !Sub "http://127.0.0.1:3000"
